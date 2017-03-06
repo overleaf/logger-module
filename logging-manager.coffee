@@ -49,7 +49,7 @@ module.exports = Logger =
 			# send the error to sentry
 			try
 				@raven.captureException(error, {tags: tags, extra: extra, level: level})
-			catch
+			catch e
 				return # ignore any errors
 
 	info : ()->
