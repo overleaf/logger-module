@@ -1,4 +1,4 @@
-require('coffee-script')
+require('coffeescript')
 chai = require('chai')
 should = chai.should()
 expect = chai.expect
