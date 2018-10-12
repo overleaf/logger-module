@@ -3,8 +3,9 @@ bunyan = require('bunyan')
 streams = [{stream: process.stdout}]
 
 if process.env["NODE_ENV"] == 'production'
-	googleCloudLogger = new require('@google-cloud/logging-bunyan').LoggingBunyan()
-	streams.push(googleCloudLogger.stream('info'))
+	LoggingBunyan = require('@google-cloud/logging-bunyan').LoggingBunyan
+	loggingBunyan = new LoggingBunyan()
+	streams.push(loggingBunyan.stream('info'))
 
 module.exports = Logger =
 	initialize: (name) ->
