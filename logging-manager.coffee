@@ -1,15 +1,16 @@
 bunyan = require('bunyan')
-LoggingBunyan = require('@google-cloud/logging-bunyan')
-loggingBunyan = new LoggingBunyan()
+
+streams = [{stream: process.stdout}]
+
+if process.env["NODE_ENV"] == 'production'
+	googleCloudLogger = new require('@google-cloud/logging-bunyan').LoggingBunyan()
+	streams.push(googleCloudLogger.stream('info'))
 
 module.exports = Logger =
 	initialize: (name) ->
 		@logger = bunyan.createLogger
 			name: name
-			streams: [
-				{stream: process.stdout},
-				loggingBunyan.stream('info'),
-			]
+			streams: streams
 		return @
 
 	initializeErrorReporting: (sentry_dsn, options) ->
