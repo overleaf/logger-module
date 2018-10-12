@@ -8,6 +8,7 @@
   },
   "version": "1.5.7",
   "dependencies": {
+    "@google-cloud/logging-bunyan": "^0.9.4",
     "bunyan": "1.5.1",
     "chai": "",
     "coffee-script": "1.12.4",

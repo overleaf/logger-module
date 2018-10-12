@@ -1,10 +1,15 @@
 bunyan = require('bunyan')
+LoggingBunyan = require('@google-cloud/logging-bunyan')
+loggingBunyan = new LoggingBunyan()
 
 module.exports = Logger =
 	initialize: (name) ->
 		@logger = bunyan.createLogger
 			name: name
-			serializers: bunyan.stdSerializers
+			streams: [
+				{stream: process.stdout},
+				loggingBunyan.stream('info'),
+			]
 		return @
 
 	initializeErrorReporting: (sentry_dsn, options) ->
