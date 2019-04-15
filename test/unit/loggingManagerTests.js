@@ -34,6 +34,11 @@ describe('LoggingManager', function() {
           createLogger: sinon.stub().returns(this.mockBunyanLogger),
           RingBuffer: bunyan.RingBuffer
         }),
+        dns: (this.Dns = {
+            lookup: (hostname, func) => {
+              func(new Error('GCE metadata server lookup failed'), null, null)
+            },
+        }),
         raven: (this.Raven = {
           Client: sinon.stub().returns(this.mockRavenClient)
         }),
@@ -75,7 +80,7 @@ describe('LoggingManager', function() {
       })
     })
 
-    describe('in production', function() {
+    describe('in production outside GCE', function() {
       beforeEach(function() {
         process.env.NODE_ENV = 'production'
         this.logger = this.LoggingManager.initialize(this.loggerName)
@@ -87,6 +92,30 @@ describe('LoggingManager', function() {
         this.Bunyan.createLogger.firstCall.args[0].streams[0].level.should.equal(
           'warn'
         )
+      })
+
+      it('should not run checkLogLevel', function () {
+        this.checkLogLevelStub.should.not.have.been.called
+      })
+
+      describe('after 10 minutes', () =>
+        it('should still not run checkLogLevel', function () {
+          this.clock.tick(601 * 1000)
+          this.checkLogLevelStub.should.not.have.been.called
+        }))
+    })
+
+    describe('in production on GCE', function () {
+      beforeEach(function() {
+        process.env.NODE_ENV = 'production'
+        this.lookupStub = sinon.stub(this.Dns, 'lookup')
+        this.lookupStub.callsArgWith(1, null, '169.254.169.254', 4)
+        this.logger = this.LoggingManager.initialize(this.loggerName)
+      })
+
+      afterEach(function() {
+        delete process.env.NODE_ENV
+        this.lookupStub.restore()
       })
 
       it('should run checkLogLevel', function() {
