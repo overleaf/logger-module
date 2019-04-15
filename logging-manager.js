@@ -1,5 +1,6 @@
 const bunyan = require('bunyan')
 const request = require('request')
+const dns = require('dns')
 
 const Logger = module.exports = {
   initialize(name) {
@@ -32,15 +33,20 @@ const Logger = module.exports = {
       streams: loggerStreams
     })
     if (this.isProduction) {
-      // clear interval if already set
-      if (this.checkInterval) {
-        clearInterval(this.checkInterval)
-      }
-      // check for log level override on startup
-      this.checkLogLevel()
-      // re-check log level every minute
-      const checkLogLevel = () => this.checkLogLevel()
-      this.checkInterval = setInterval(checkLogLevel, 1000 * 60)
+      // are we running in a google cloud vm
+      dns.lookup('metadata.google.internal', (err, addr, family) => {
+        if (err) return
+
+        // clear interval if already set
+        if (this.checkInterval) {
+          clearInterval(this.checkInterval)
+        }
+        // check for log level override on startup
+        this.checkLogLevel()
+        // re-check log level every minute
+        const checkLogLevel = () => this.checkLogLevel()
+        this.checkInterval = setInterval(checkLogLevel, 1000 * 60)
+      })
     }
     return this
   },
