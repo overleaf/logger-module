@@ -29,6 +29,10 @@ describe('LoggingManager', function () {
       captureException: this.captureException,
       once: sinon.stub().yields()
     }
+    this.axiosResponse = {
+      data: {},
+      status: 200
+    }
     this.Bunyan = {
       createLogger: sinon.stub().returns(this.bunyanLogger),
       RingBuffer: bunyan.RingBuffer,
@@ -40,7 +44,9 @@ describe('LoggingManager', function () {
     this.Raven = {
       Client: sinon.stub().returns(this.ravenClient)
     }
-    this.Request = sinon.stub()
+    this.Axios = {
+      request: sinon.stub().resolves(this.axiosResponse)
+    }
     this.Fs = {
       readFile: sinon.stub(),
       access: sinon.stub()
@@ -57,9 +63,9 @@ describe('LoggingManager', function () {
       requires: {
         bunyan: this.Bunyan,
         raven: this.Raven,
-        request: this.Request,
         fs: this.Fs,
-        '@google-cloud/logging-bunyan': this.GCPLogging
+        '@google-cloud/logging-bunyan': this.GCPLogging,
+        axios: this.Axios
       }
     })
     this.loggerName = 'test'
@@ -381,6 +387,8 @@ describe('LoggingManager', function () {
 
         describe('checkLogLevel', function() {
           it('should request log level override from google meta data service', function() {
+            //console.log(this.logger.raven)
+            //console.log(this.logger.axios)
             this.logger.checkLogLevel()
             const options = {
               headers: {
@@ -388,12 +396,14 @@ describe('LoggingManager', function () {
               },
               uri: `http://metadata.google.internal/computeMetadata/v1/project/attributes/${this.loggerName}-setLogLevelEndTime`
             }
-            this.Request.should.have.been.calledWithMatch(options)
+            this.Axios.request.should.have.been.calledWithMatch(options)
           })
       
           describe('when request has error', function() {
             beforeEach(function() {
-              this.Request.yields('error')
+              //console.log(this.logger)
+              this.error = new Error
+              this.Axios.request=sinon.stub().throws(this.error)
               this.logger.checkLogLevel()
             })
       
@@ -406,7 +416,9 @@ describe('LoggingManager', function () {
       
           describe('when statusCode is not 200', function() {
             beforeEach(function() {
-              this.Request.yields(null, { statusCode: 404 })
+              this.axiosResponse.status=404
+              this.Axios.request = sinon.stub().resolves(this.axiosResponse)
+              //this.Request.yields(null, { statusCode: 404 })
               this.logger.checkLogLevel()
             })
       
@@ -448,7 +460,9 @@ describe('LoggingManager', function () {
             describe('when level is not already set', function() {
               beforeEach(function() {
                 this.bunyanLogger.level.returns(20)
-                this.Request.yields(null, { statusCode: 200 }, this.start + 1000)
+                this.axiosResponse = {data: this.start + 1000, status: 200}
+                this.Axios.request = sinon.stub().resolves(this.axiosResponse)
+                //this.Request.yields(null, { statusCode: 200 }, this.start + 1000)
                 this.logger.checkLogLevel()
               })
       

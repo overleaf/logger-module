@@ -1,5 +1,5 @@
 const bunyan = require('bunyan')
-const request = require('request')
+const axios = require('axios')
 const fs = require('fs')
 const yn = require('yn')
 const OError = require('@overleaf/o-error')
@@ -57,22 +57,27 @@ const Logger = (module.exports = {
   },
 
   checkLogLevelMetadata() {
+    console.log("Starting checkLogLevelMetadata")
+    console.log("logger", this.logger)
     const options = {
       headers: {
         'Metadata-Flavor': 'Google'
       },
       uri: `http://metadata.google.internal/computeMetadata/v1/project/attributes/${this.loggerName}-setLogLevelEndTime`
     }
-    request(options, (err, response, body) => {
-      if (err) {
-        this.logger.level(this.defaultLevel)
-        return
-      }
-      if (parseInt(body) > Date.now()) {
+    axios.request(options).then(function (response) {
+      console.log(response.data)
+      console.log(response.status)
+      console.log("In then")
+      console.log("logger", this.logger)
+      if (parseInt(response.data) > Date.now()) {
         this.logger.level('trace')
       } else {
         this.logger.level(this.defaultLevel)
       }
+    }).catch(function(err) {
+        this.logger.level(this.defaultLevel)
+        return
     })
   },
 
