@@ -72,12 +72,9 @@ const Logger = (module.exports = {
     return res.text()
   },
 
-  initializeErrorReporting(sentryDsn, options) {
+  initializeErrorReporting(dsn, options) {
     const Sentry = require('@sentry/node')
-    Sentry.init({
-      dsn: sentryDsn,
-      ...options,
-    })
+    Sentry.init({ dsn, ...options })
     this.lastErrorTimeStamp = 0 // for rate limiting on sentry reporting
     this.lastErrorCount = 0
   },
