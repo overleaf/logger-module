@@ -28,7 +28,6 @@ describe('LoggingManager', function () {
     this.Sentry = {
       init: sinon.stub(),
       captureException: this.captureException,
-      once: sinon.stub().yields()
     }
     this.fetchResponse = {
       text: sinon.stub().resolves(''),

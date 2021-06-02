@@ -207,22 +207,10 @@ const Logger = (module.exports = {
     return this.logger.warn.apply(this.logger, arguments)
   },
 
-  fatal(attributes, message, callback) {
-    if (callback == null) {
-      callback = function () {}
-    }
+  fatal(attributes, message) {
     this.logger.fatal(attributes, message)
     if (this.Sentry) {
-      var cb = function (e) {
-        // call the callback once after 'logged' or 'error' event
-        callback()
-        return (cb = function () {})
-      }
       this.captureException(attributes, message, 'fatal')
-      this.Sentry.once('logged', cb)
-      return this.Sentry.once('error', cb)
-    } else {
-      return callback()
     }
   },
 
