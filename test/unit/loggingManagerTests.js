@@ -25,7 +25,8 @@ describe('LoggingManager', function () {
       level: sinon.stub(),
       warn: sinon.stub()
     }
-    this.ravenClient = {
+    this.Sentry = {
+      init: sinon.stub(),
       captureException: this.captureException,
       once: sinon.stub().yields()
     }
@@ -41,9 +42,6 @@ describe('LoggingManager', function () {
         req: sinon.stub(),
         res: sinon.stub()
       }
-    }
-    this.Raven = {
-      Client: sinon.stub().returns(this.ravenClient)
     }
     this.Fetch = sinon.stub().resolves(this.fetchResponse)
     this.Fs = {
@@ -63,7 +61,7 @@ describe('LoggingManager', function () {
       globals: { console, process },
       requires: {
         bunyan: this.Bunyan,
-        raven: this.Raven,
+        '@sentry/node': this.Sentry,
         'node-fetch': this.Fetch,
         fs: this.Fs,
         '@google-cloud/logging-bunyan': this.GCPLogging
