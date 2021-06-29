@@ -4,6 +4,7 @@ const fs = require('fs')
 const yn = require('yn')
 const OError = require('@overleaf/o-error')
 const GCPLogging = require('@google-cloud/logging-bunyan')
+const { Writable } = require('stream')
 
 // bunyan error serializer
 const errSerializer = function (err) {
@@ -16,8 +17,44 @@ const errSerializer = function (err) {
     stack: OError.getFullStack(err),
     info: OError.getFullInfo(err),
     code: err.code,
-    signal: err.signal
+    signal: err.signal,
   }
+}
+
+function createOutputStream(logName) {
+  return new Writable({
+    objectMode: true,
+    write(log, encoding, callback) {
+      log.severity = bunyan.nameFromLevel[log.level]
+      if (log.err) {
+        log['@type'] =
+          'type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent'
+        log.message = log.err.stack
+        log.serviceContext = { service: logName }
+      } else {
+        log.message = log.msg
+      }
+      if (log.req && log.res) {
+        const req = log.req
+        const res = log.res
+        const responseTimeMs = log['response-time']
+        const responseTimeSeconds = responseTimeMs / 1000
+        log.httpRequest = {
+          requestMethod: req.method,
+          requestUrl: req.url,
+          requestSize: req['content-length'],
+          status: res.statusCode,
+          responseSize: res['content-length'],
+          userAgent: req['user-agent'],
+          remoteIp: req['remote-addr'],
+          referer: req.referrer,
+          latency: responseTimeSeconds + 's',
+        }
+      }
+      console.log(JSON.stringify(log, bunyan.safeCycles()))
+      setImmediate(callback)
+    },
+  })
 }
 
 const Logger = (module.exports = {
@@ -32,10 +69,14 @@ const Logger = (module.exports = {
       name,
       serializers: {
         err: errSerializer,
-        req: bunyan.stdSerializers.req,
-        res: bunyan.stdSerializers.res
       },
-      streams: [{ level: this.defaultLevel, stream: process.stdout }]
+      streams: [
+        {
+          level: this.defaultLevel,
+          type: 'raw',
+          stream: createOutputStream(name),
+        },
+      ],
     })
     this._setupRingBuffer()
     this._setupStackdriver()
@@ -63,8 +104,8 @@ const Logger = (module.exports = {
   async getTracingEndTimeMetadata() {
     const options = {
       headers: {
-        'Metadata-Flavor': 'Google'
-      }
+        'Metadata-Flavor': 'Google',
+      },
     }
     const uri = `http://metadata.google.internal/computeMetadata/v1/project/attributes/${this.loggerName}-setLogLevelEndTime`
     const res = await fetch(uri, options)
@@ -122,7 +163,7 @@ const Logger = (module.exports = {
           url: req.originalUrl,
           query: req.query,
           headers: req.headers,
-          ip: req.ip
+          ip: req.ip,
         }
       }
       // recreate error objects that have been converted to a normal object
@@ -233,7 +274,7 @@ const Logger = (module.exports = {
       this.logger.addStream({
         level: 'trace',
         type: 'raw',
-        stream: this.ringBuffer
+        stream: this.ringBuffer,
       })
     } else {
       this.ringBuffer = null
@@ -247,7 +288,7 @@ const Logger = (module.exports = {
     }
     const stackdriverClient = new GCPLogging.LoggingBunyan({
       logName: this.loggerName,
-      serviceContext: { service: this.loggerName }
+      serviceContext: { service: this.loggerName },
     })
     this.logger.addStream(stackdriverClient.stream(this.defaultLevel))
   },
@@ -273,7 +314,7 @@ const Logger = (module.exports = {
       // re-check log level every minute
       this.checkInterval = setInterval(this.checkLogLevel.bind(this), 1000 * 60)
     }
-  }
+  },
 })
 
 Logger.initialize('default-sharelatex')
